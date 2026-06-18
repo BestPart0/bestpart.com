@@ -63,17 +63,17 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
             <div>
               <label id="lbl-make" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Make</label>
-              <input id="inp-make" type="text" required placeholder="e.g. Nissan"
+              <input id="inp-make" type="text" required placeholder="e.g. Toyota"
                 class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label id="lbl-model" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Model</label>
-              <input id="inp-model" type="text" required placeholder="e.g. Qashqai"
+              <input id="inp-model" type="text" required placeholder="e.g. Camry"
                 class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label id="lbl-year" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Year</label>
-              <input id="inp-year" type="number" required placeholder="e.g. 2025" min="1980" max="2030"
+              <input id="inp-year" type="number" required placeholder="e.g. 2019" min="1950" max="2030"
                 class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
@@ -163,9 +163,9 @@ const T = {
   en: {
     heroTitle: 'The Google Shopping of <span class="text-blue-600">Car Parts</span>.',
     heroSub: 'Find the cheapest OEM & aftermarket parts from Egyptian markets in seconds. Zero noise, just real options sorted by price.',
-    lMake:'Make', phMake:'e.g. Nissan',
-    lModel:'Model', phModel:'e.g. Qashai',
-    lYear:'Year', phYear:'e.g. 2025',
+    lMake:'Make', phMake:'e.g. Toyota',
+    lModel:'Model', phModel:'e.g. Camry',
+    lYear:'Year', phYear:'e.g. 2019',
     lPart:'Part Name', phPart:'e.g. Brake Pads, Alternator, Oil Filter',
     btnSearch:'Find Best Prices', btnSearchAgain:'Search Again',
     loadingMsg:'Searching Egyptian markets for the best prices...',
@@ -179,11 +179,11 @@ const T = {
     currency:(p)=>`EGP ${p.toLocaleString('en-EG')}`,
   },
   ar: {
-    heroTitle:'جوجل التسوق لقطع غيار السيارات.',
+    heroTitle:'جوجل شوبينج لقطع غيار السيارات.',
     heroSub:'ابحث عن أرخص قطع السيارات الأصلية والبديلة من السوق المصري في ثوانٍ. بدون تشويش، فقط خيارات حقيقية مرتبة بالسعر.',
-    lMake:'الماركة', phMake : 'مثال: نيسان',
-    lModel:'الموديل', phModel:'مثال: قشقاي',
-    lYear:'السنة', phYear:'مثال: 2025',
+    lMake:'الماركة', phMake:'مثال: تويوتا',
+    lModel:'الموديل', phModel:'مثال: كامري',
+    lYear:'السنة', phYear:'مثال: 2019',
     lPart:'اسم القطعة', phPart:'مثال: تيل فرامل، دينمو، فلتر زيت',
     btnSearch:'ابحث عن أفضل الأسعار', btnSearchAgain:'بحث جديد',
     loadingMsg:'جاري البحث في السوق المصري عن أفضل الأسعار...',
@@ -252,37 +252,21 @@ function showPage(id) {
   if (id === 'page-loading' || id === 'page-error') el.classList.add('flex');
   window.scrollTo(0, 0);
 }
-// ── MOCK SEARCH RESULTS ─────────────────────────────────────────────────────
-const mockResults = [
-  {
-    id: "1",
-    name: `${partName} - ${make} ${model}`,
-    price: 1200,
-    type: "Aftermarket",
-    seller: "Jumia Egypt",
-    url: "#",
-    condition: "New",
-    brand: "Bosch",
-    partNumber: "BP-101",
-    rating: 4.5,
-    shippingNote: "Delivery in Cairo 2-3 days"
-  },
-  {
-    id: "2",
-    name: `OEM ${partName} - ${make} ${model}`,
-    price: 2800,
-    type: "OEM",
-    seller: "Amazon Egypt",
-    url: "#",
-    condition: "New",
-    brand: "Toyota",
-    partNumber: "OEM-202",
-    rating: 4.8,
-    shippingNote: "Free delivery Cairo"
-  }
-];
 
-renderResults(mockResults, { make, model, year, partName });
+// ── API KEY ─────────────────────────────────────────────────────────────────
+function getApiKey() {
+  let key = localStorage.getItem('bp_groq_key');
+  if (!key) {
+    key = prompt('Paste your free Groq API key below.\n\nGet one free at: console.groq.com/keys');
+    if (key && key.trim()) {
+      localStorage.setItem('bp_groq_key', key.trim());
+    } else {
+      return null;
+    }
+  }
+  return key.trim();
+}
+
 // ── SEARCH ──────────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are a car parts price comparison assistant for the Egyptian automotive market.
 Generate realistic car parts listings for Egypt priced in EGP (Egyptian Pound). 1 USD ≈ 48-50 EGP.
@@ -313,69 +297,33 @@ async function retrySearch() {
 
 async function runSearch({ make, model, year, partName }) {
   const t = T[lang];
+  const key = getApiKey();
+  if (!key) return;
 
   showPage('page-loading');
   document.getElementById('loading-msg').textContent = t.loadingMsg;
   document.getElementById('loading-sub').textContent = t.loadingSub(make, model, year, partName);
 
   const userPrompt =
-id: "1",
+`Find car parts listings in Egypt for:
+- Vehicle: ${year} ${make} ${model}
+- Part needed: ${partName}
 
-      name: `${partName} - ${make} ${model}`,
-
-      price: 1200,
-
-      type: "Aftermarket",
-
-      seller: "Jumia Egypt",
-
-      url: "#",
-
-      condition: "New",
-
-      brand: "Bosch",
-
-      partNumber: "BP-101",
-
-      rating: 4.5,
-
-      shippingNote: "Delivery in Cairo 2-3 days"
-
-    },
-
-    {
-
-      id: "2",
-
-      name: `OEM ${partName} - ${make} ${model}`,
-
-      price: 2800,
-
-      type: "OEM",
-
-      seller: "Amazon Egypt",
-
-      url: "#",
-
-      condition: "New",
-
-      brand: "Toyota",
-
-      partNumber: "OEM-202",
-
-      rating: 4.8,
-
-      shippingNote: "Free delivery Cairo"
-
-    }
-
-  ];
-
-  setTimeout(() => {
-
-    renderResults(mockResults, { make, model, year, partName });
-
-  }, 800);
+Return a JSON array of 8-12 part listings sorted by price (EGP) ascending. Each object must have:
+{
+  "id": "unique string",
+  "name": "full part name including brand",
+  "price": number (EGP),
+  "type": "OEM" or "Aftermarket",
+  "seller": "seller name",
+  "url": "realistic URL on the seller's Egyptian domain",
+  "condition": "New" or "Remanufactured" or "Used",
+  "brand": "brand name or null",
+  "partNumber": "part number or null",
+  "rating": number 3.5-5.0 or null,
+  "shippingNote": "shipping info in English or Arabic, or null"
+}
+Return ONLY the JSON array. No other text.`;
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
