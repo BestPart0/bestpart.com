@@ -63,17 +63,17 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
             <div>
               <label id="lbl-make" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Make</label>
-              <input id="inp-make" type="text" required placeholder="e.g. Toyota"
+              <input id="inp-make" type="text" required placeholder="e.g. Nissan"
                 class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label id="lbl-model" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Model</label>
-              <input id="inp-model" type="text" required placeholder="e.g. Camry"
+              <input id="inp-model" type="text" required placeholder="e.g. Qashqai"
                 class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label id="lbl-year" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Year</label>
-              <input id="inp-year" type="number" required placeholder="e.g. 2019" min="1950" max="2030"
+              <input id="inp-year" type="number" required placeholder="e.g. 2025" min="1980" max="2030"
                 class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
@@ -163,9 +163,9 @@ const T = {
   en: {
     heroTitle: 'The Google Shopping of <span class="text-blue-600">Car Parts</span>.',
     heroSub: 'Find the cheapest OEM & aftermarket parts from Egyptian markets in seconds. Zero noise, just real options sorted by price.',
-    lMake:'Make', phMake:'e.g. Toyota',
-    lModel:'Model', phModel:'e.g. Camry',
-    lYear:'Year', phYear:'e.g. 2019',
+    lMake:'Make', phMake:'e.g. Nissan',
+    lModel:'Model', phModel:'e.g. Qashqai',
+    lYear:'Year', phYear:'e.g. 2025',
     lPart:'Part Name', phPart:'e.g. Brake Pads, Alternator, Oil Filter',
     btnSearch:'Find Best Prices', btnSearchAgain:'Search Again',
     loadingMsg:'Searching Egyptian markets for the best prices...',
@@ -179,11 +179,11 @@ const T = {
     currency:(p)=>`EGP ${p.toLocaleString('en-EG')}`,
   },
   ar: {
-    heroTitle:'جوجل شوبينج لقطع غيار السيارات.',
+    heroTitle:'جوجل التسوق لقطع غيار السيارات.',
     heroSub:'ابحث عن أرخص قطع السيارات الأصلية والبديلة من السوق المصري في ثوانٍ. بدون تشويش، فقط خيارات حقيقية مرتبة بالسعر.',
-    lMake:'الماركة', phMake:'مثال: تويوتا',
-    lModel:'الموديل', phModel:'مثال: كامري',
-    lYear:'السنة', phYear:'مثال: 2019',
+    lMake:'الماركة', phMake:'مثال: نيسان',
+    lModel:'الموديل', phModel:'مثال: قشقاي',
+    lYear:'السنة', phYear:'مثال: 2025',
     lPart:'اسم القطعة', phPart:'مثال: تيل فرامل، دينمو، فلتر زيت',
     btnSearch:'ابحث عن أفضل الأسعار', btnSearchAgain:'بحث جديد',
     loadingMsg:'جاري البحث في السوق المصري عن أفضل الأسعار...',
