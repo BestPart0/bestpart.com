@@ -319,25 +319,63 @@ async function runSearch({ make, model, year, partName }) {
   document.getElementById('loading-sub').textContent = t.loadingSub(make, model, year, partName);
 
   const userPrompt =
-`Find car parts listings in Egypt for:
-- Vehicle: ${year} ${make} ${model}
-- Part needed: ${partName}
+id: "1",
 
-Return a JSON array of 8-12 part listings sorted by price (EGP) ascending. Each object must have:
-{
-  "id": "unique string",
-  "name": "full part name including brand",
-  "price": number (EGP),
-  "type": "OEM" or "Aftermarket",
-  "seller": "seller name",
-  "url": "realistic URL on the seller's Egyptian domain",
-  "condition": "New" or "Remanufactured" or "Used",
-  "brand": "brand name or null",
-  "partNumber": "part number or null",
-  "rating": number 3.5-5.0 or null,
-  "shippingNote": "shipping info in English or Arabic, or null"
-}
-Return ONLY the JSON array. No other text.`;
+      name: `${partName} - ${make} ${model}`,
+
+      price: 1200,
+
+      type: "Aftermarket",
+
+      seller: "Jumia Egypt",
+
+      url: "#",
+
+      condition: "New",
+
+      brand: "Bosch",
+
+      partNumber: "BP-101",
+
+      rating: 4.5,
+
+      shippingNote: "Delivery in Cairo 2-3 days"
+
+    },
+
+    {
+
+      id: "2",
+
+      name: `OEM ${partName} - ${make} ${model}`,
+
+      price: 2800,
+
+      type: "OEM",
+
+      seller: "Amazon Egypt",
+
+      url: "#",
+
+      condition: "New",
+
+      brand: "Toyota",
+
+      partNumber: "OEM-202",
+
+      rating: 4.8,
+
+      shippingNote: "Free delivery Cairo"
+
+    }
+
+  ];
+
+  setTimeout(() => {
+
+    renderResults(mockResults, { make, model, year, partName });
+
+  }, 800);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
