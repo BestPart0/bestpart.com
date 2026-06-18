@@ -4,476 +4,826 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BestPart — Car Parts Price Comparison Egypt</title>
-  <meta name="description" content="Find the cheapest OEM & aftermarket car parts in Egypt. Compare prices from OLX, Hatla2ee, Noon, Amazon Egypt, Jumia and local Cairo shops." />
+  <meta name="description" content="Find the cheapest OEM & aftermarket car parts in Egypt." />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     body { font-family: 'Outfit', sans-serif; }
-    .arabic { font-family: 'Cairo', sans-serif; }
+    .arabic body, body.arabic { font-family: 'Cairo', sans-serif; }
     .grid-bg {
-      background-image: linear-gradient(to right, #80808012 1px, transparent 1px),
-                        linear-gradient(to bottom, #80808012 1px, transparent 1px);
+      background-image: linear-gradient(to right,#80808012 1px,transparent 1px),
+                        linear-gradient(to bottom,#80808012 1px,transparent 1px);
       background-size: 24px 24px;
     }
     .spin { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .fade-in { animation: fadeIn 0.25s ease-out; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-    .card:hover { box-shadow: 0 12px 28px rgba(0,0,0,0.10); }
-    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .fade-in { animation: fadeIn .25s ease-out; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+    .card:hover { box-shadow:0 12px 28px rgba(0,0,0,.10); }
+    .line-clamp-2 { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+
+    /* ── autocomplete ── */
+    .ac-wrap { position:relative; }
+    .ac-dd {
+      position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:200;
+      background:#fff; border:1px solid #e5e7eb; border-radius:.5rem;
+      box-shadow:0 8px 24px rgba(0,0,0,.12); max-height:220px; overflow-y:auto;
+      display:none;
+    }
+    .ac-dd.open { display:block; }
+    .ac-dd li {
+      padding:.55rem 1rem; cursor:pointer; font-size:.95rem;
+      list-style:none; transition:background .1s;
+    }
+    .ac-dd li:hover, .ac-dd li.active { background:#eff6ff; color:#1d4ed8; }
+    .ac-dd li.no-match { color:#9ca3af; cursor:default; pointer-events:none; }
+
+    /* ── settings modal ── */
+    #modal-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+      z-index:500; align-items:center; justify-content:center;
+    }
+    #modal-overlay.open { display:flex; }
+    #modal-box {
+      background:#fff; border-radius:1rem; padding:2rem; width:90%; max-width:440px;
+      box-shadow:0 20px 60px rgba(0,0,0,.2);
+    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-  <!-- ═══════════════════════ HOME PAGE ═══════════════════════ -->
-  <div id="page-home" class="min-h-screen flex flex-col bg-white relative overflow-hidden">
-    <div class="absolute inset-0 grid-bg pointer-events-none"></div>
+<!-- ══════════════════ API KEY MODAL ══════════════════ -->
+<div id="modal-overlay" role="dialog" aria-modal="true">
+  <div id="modal-box">
+    <h2 id="modal-title" class="text-xl font-bold text-gray-900 mb-1">API Key Setup</h2>
+    <p id="modal-desc" class="text-sm text-gray-500 mb-5">
+      BestPart uses the free <a href="https://console.groq.com/keys" target="_blank" class="text-blue-600 underline">Groq API</a> to find prices.
+      Your key is saved in your browser only — never sent anywhere else.
+    </p>
+    <label id="modal-lbl" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Groq API Key</label>
+    <input id="modal-key-inp" type="password"
+      placeholder="gsk_..."
+      class="w-full h-11 px-4 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 font-mono" />
+    <div class="flex gap-3">
+      <button onclick="saveKey()" id="modal-save"
+        class="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors">Save Key</button>
+      <button onclick="closeModal()" id="modal-cancel"
+        class="flex-1 h-11 border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-lg transition-colors">Cancel</button>
+    </div>
+    <p id="modal-err" class="text-red-500 text-xs mt-3 hidden"></p>
+  </div>
+</div>
 
-    <header class="relative z-10 px-6 py-5 flex items-center justify-between border-b bg-white/80 backdrop-blur-sm">
-      <div class="flex items-center gap-2 font-bold text-2xl tracking-tight text-gray-900">
-        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3-3a1 1 0 000-1.4l-1.6-1.6a1 1 0 00-1.4 0l-3 3zM4 20l9.4-9.4M3 21l1-1"/>
+<!-- ══════════════════ HOME PAGE ══════════════════ -->
+<div id="page-home" class="min-h-screen flex flex-col bg-white relative overflow-hidden">
+  <div class="absolute inset-0 grid-bg pointer-events-none"></div>
+
+  <header class="relative z-10 px-6 py-5 flex items-center justify-between border-b bg-white/80 backdrop-blur-sm">
+    <div class="flex items-center gap-2 font-bold text-2xl tracking-tight text-gray-900">
+      <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      BestPart
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="openModal()" title="API Key Settings"
+        class="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
-        BestPart
-      </div>
-      <button onclick="toggleLang()" class="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+      </button>
+      <button onclick="toggleLang()"
+        class="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
         </svg>
         <span id="lang-btn-home">العربية</span>
       </button>
-    </header>
+    </div>
+  </header>
 
-    <main class="flex-1 relative z-10 flex flex-col items-center justify-center px-6 py-12">
-      <div class="w-full max-w-2xl text-center mb-12 fade-in">
-        <h1 id="hero-title" class="text-5xl sm:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight mb-6">
-          The Google Shopping of <span class="text-blue-600">Car Parts</span>.
-        </h1>
-        <p id="hero-sub" class="text-xl text-gray-500 font-medium max-w-xl mx-auto leading-relaxed">
-          Find the cheapest OEM &amp; aftermarket parts from Egyptian markets in seconds. Zero noise, just real options sorted by price.
-        </p>
-      </div>
+  <main class="flex-1 relative z-10 flex flex-col items-center justify-center px-6 py-12">
+    <div class="w-full max-w-2xl text-center mb-12 fade-in">
+      <h1 id="hero-title" class="text-5xl sm:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight mb-6">
+        The Google Shopping of <span class="text-blue-600">Car Parts</span>.
+      </h1>
+      <p id="hero-sub" class="text-xl text-gray-500 font-medium max-w-xl mx-auto leading-relaxed">
+        Find the cheapest OEM &amp; aftermarket parts from Egyptian markets in seconds.
+      </p>
+    </div>
 
-      <div class="w-full max-w-3xl bg-white border border-gray-200 shadow-xl rounded-2xl p-6 sm:p-8 fade-in">
-        <form id="search-form" onsubmit="handleSearch(event)">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-            <div>
-              <label id="lbl-make" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Make</label>
-              <input id="inp-make" type="text" required placeholder="e.g. Nissan"
-                class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label id="lbl-model" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Model</label>
-              <input id="inp-model" type="text" required placeholder="e.g. Qashqai"
-                class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label id="lbl-year" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Year</label>
-              <input id="inp-year" type="number" required placeholder="e.g. 2025" min="1980" max="2030"
-                class="w-full h-12 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    <div class="w-full max-w-3xl bg-white border border-gray-200 shadow-xl rounded-2xl p-6 sm:p-8 fade-in">
+      <form id="search-form" onsubmit="handleSearch(event)">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
+
+          <!-- Make -->
+          <div>
+            <label id="lbl-make" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Make</label>
+            <div class="ac-wrap">
+              <input id="inp-make" type="text" autocomplete="off" required placeholder="e.g. Toyota"
+                class="w-full h-12 px-4 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <ul id="dd-make" class="ac-dd"></ul>
             </div>
           </div>
-          <div class="mb-6">
-            <label id="lbl-part" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Part Name</label>
-            <input id="inp-part" type="text" required placeholder="e.g. Brake Pads, Alternator, Oil Filter"
-              class="w-full h-14 px-4 text-xl border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+          <!-- Model -->
+          <div>
+            <label id="lbl-model" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Model</label>
+            <div class="ac-wrap">
+              <input id="inp-model" type="text" autocomplete="off" required placeholder="e.g. Corolla"
+                class="w-full h-12 px-4 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <ul id="dd-model" class="ac-dd"></ul>
+            </div>
           </div>
-          <button type="submit" class="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg flex items-center justify-center gap-2 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <span id="btn-search">Find Best Prices</span>
-          </button>
-        </form>
-      </div>
-    </main>
-  </div>
 
-  <!-- ═══════════════════════ LOADING PAGE ═══════════════════════ -->
-  <div id="page-loading" class="hidden min-h-screen items-center justify-center flex-col bg-gray-50">
-    <svg class="spin w-12 h-12 text-blue-600 mb-5" fill="none" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-    </svg>
-    <h2 id="loading-msg" class="text-2xl font-bold text-gray-800 mb-2 text-center px-4">Searching Egyptian markets...</h2>
-    <p id="loading-sub" class="text-gray-400 font-mono text-sm text-center px-4"></p>
-  </div>
+          <!-- Year -->
+          <div>
+            <label id="lbl-year" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Year</label>
+            <div class="ac-wrap">
+              <input id="inp-year" type="text" inputmode="numeric" autocomplete="off" required placeholder="e.g. 2020"
+                class="w-full h-12 px-4 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <ul id="dd-year" class="ac-dd"></ul>
+            </div>
+          </div>
 
-  <!-- ═══════════════════════ RESULTS PAGE ═══════════════════════ -->
-  <div id="page-results" class="hidden min-h-screen flex-col bg-gray-50">
-    <header class="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <button onclick="showPage('page-home')" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <svg id="back-icon" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <div class="hidden sm:flex items-center gap-2 font-bold text-xl text-gray-900">
-            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            BestPart
+        </div>
+
+        <!-- Part Name -->
+        <div class="mb-6">
+          <label id="lbl-part" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Part Name</label>
+          <div class="ac-wrap">
+            <input id="inp-part" type="text" autocomplete="off" required placeholder="e.g. Brake Pads, Alternator, Oil Filter"
+              class="w-full h-14 px-4 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <ul id="dd-part" class="ac-dd"></ul>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <button onclick="toggleLang()" class="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
-            </svg>
-            <span id="lang-btn-results">العربية</span>
-          </button>
-          <button onclick="showPage('page-home')" id="btn-search-again"
-            class="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">
-            Search Again
-          </button>
-        </div>
-      </div>
-    </header>
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
-      <div class="pb-6 border-b mb-6">
-        <h1 id="results-title" class="text-3xl font-extrabold tracking-tight text-gray-900"></h1>
-        <p id="results-sub" class="text-gray-500 mt-1 font-medium text-lg"></p>
-      </div>
-      <div id="results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    </main>
-  </div>
 
-  <!-- ═══════════════════════ ERROR PAGE ═══════════════════════ -->
-  <div id="page-error" class="hidden min-h-screen items-center justify-center flex-col bg-gray-50">
-    <svg class="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-    </svg>
-    <h2 id="err-title" class="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-    <p id="err-sub" class="text-gray-500 mb-6 text-center px-4">We couldn't fetch the results right now.</p>
-    <button onclick="retrySearch()"
-      class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors" id="btn-retry">
-      Try Again
-    </button>
-  </div>
+        <button type="submit" class="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg flex items-center justify-center gap-2 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <span id="btn-search">Find Best Prices</span>
+        </button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════ LOADING ══════════════════ -->
+<div id="page-loading" class="hidden min-h-screen items-center justify-center flex-col bg-gray-50">
+  <svg class="spin w-12 h-12 text-blue-600 mb-5" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+  </svg>
+  <h2 id="loading-msg" class="text-2xl font-bold text-gray-800 mb-2 text-center px-4">Searching Egyptian markets...</h2>
+  <p id="loading-sub" class="text-gray-400 text-sm text-center px-4"></p>
+</div>
+
+<!-- ══════════════════ RESULTS ══════════════════ -->
+<div id="page-results" class="hidden min-h-screen flex-col bg-gray-50">
+  <header class="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <button onclick="showPage('page-home')" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+          <svg id="back-icon" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <span class="hidden sm:block font-bold text-xl text-gray-900">BestPart</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openModal()" title="API Key"
+          class="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </button>
+        <button onclick="toggleLang()"
+          class="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+          </svg>
+          <span id="lang-btn-results">العربية</span>
+        </button>
+        <button onclick="showPage('page-home')" id="btn-search-again"
+          class="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">
+          Search Again
+        </button>
+      </div>
+    </div>
+  </header>
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+    <div class="pb-6 border-b mb-6">
+      <h1 id="results-title" class="text-3xl font-extrabold tracking-tight text-gray-900"></h1>
+      <p id="results-sub" class="text-gray-500 mt-1 font-medium text-lg"></p>
+    </div>
+    <div id="results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </main>
+</div>
+
+<!-- ══════════════════ ERROR ══════════════════ -->
+<div id="page-error" class="hidden min-h-screen items-center justify-center flex-col bg-gray-50">
+  <svg class="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+  </svg>
+  <h2 id="err-title" class="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h2>
+  <p id="err-sub" class="text-gray-500 mb-6 text-center px-6">We couldn't fetch the results right now.</p>
+  <button onclick="retrySearch()" id="btn-retry"
+    class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors mb-3">
+    Try Again
+  </button>
+  <button onclick="openModal()"
+    class="text-sm text-gray-400 hover:text-gray-600 underline" id="btn-fix-key">
+    Update API Key
+  </button>
+</div>
 
 <script>
-// ── TRANSLATIONS ────────────────────────────────────────────────────────────
+// ═══════════════════════ DATA ═════════════════════════════════════════════════
+const CAR_MAKES = [
+  'Alfa Romeo','Audi','BAIC','BMW','BYD','Brilliance','Buick',
+  'Cadillac','Chery','Chevrolet','Chrysler','Citroën',
+  'DFSK','Dodge','Ferrari','Fiat','Ford',
+  'GAC','Geely','GMC','Great Wall',
+  'Honda','Hyundai',
+  'Infiniti','Isuzu',
+  'Jaguar','Jeep',
+  'Kia',
+  'Land Rover','Lexus','Lincoln',
+  'Maserati','Mazda','Mercedes-Benz','MG','Mini','Mitsubishi',
+  'Nissan',
+  'Opel',
+  'Peugeot','Porsche',
+  'Ram','Renault',
+  'Seat','Skoda','Subaru','Suzuki',
+  'Tesla','Toyota',
+  'Volkswagen','Volvo',
+  'Zotye'
+];
+
+const CAR_MODELS = {
+  'Toyota':['Corolla','Camry','Yaris','Fortuner','Land Cruiser','Hilux','Rush','Prius','RAV4','Highlander','Avalon','Venza','C-HR','FJ Cruiser','Sequoia','4Runner','Tundra','Tacoma','Sienna','Vios','Avanza','Supra'],
+  'Nissan':['Sunny','Sentra','Altima','Maxima','Qashqai','X-Trail','Patrol','Navara','Murano','Rogue','Armada','Pathfinder','Juke','Note','March','Micra','Kicks','Tiida','Sylphy','GT-R','370Z'],
+  'Hyundai':['Elantra','Tucson','Accent','Santa Fe','i10','i20','i30','i40','Sonata','Creta','ix35','Kona','Venue','Veloster','Azera','Verna','Palisade','Staria'],
+  'Kia':['Picanto','Rio','Stonic','Sportage','Sorento','Carnival','Cerato','K5','Telluride','Seltos','Soul','Stinger','EV6'],
+  'Chevrolet':['Aveo','Optra','Captiva','Lumina','Blazer','Traverse','Silverado','Suburban','Tahoe','Equinox','Trailblazer','Colorado','Camaro','Corvette','Malibu','Cruze','Spark','Sonic'],
+  'Honda':['Civic','Accord','City','Jazz','Fit','CR-V','HR-V','Pilot','Passport','Odyssey','Ridgeline','BR-V','Freed'],
+  'Ford':['Focus','Fiesta','Fusion','Mondeo','Explorer','Edge','Escape','EcoSport','Ranger','F-150','Bronco','Mustang','Expedition','Puma','Kuga'],
+  'Mitsubishi':['Lancer','Galant','Pajero','L200','Outlander','Eclipse Cross','ASX','Montero','Grandis','Colt','Mirage'],
+  'Suzuki':['Swift','Vitara','Grand Vitara','Jimny','Alto','Celerio','S-Cross','Ertiga','Ciaz','Carry'],
+  'Volkswagen':['Golf','Polo','Jetta','Passat','Tiguan','Touareg','T-Roc','T-Cross','Arteon','Up','Caddy'],
+  'BMW':['1 Series','2 Series','3 Series','4 Series','5 Series','6 Series','7 Series','8 Series','X1','X2','X3','X4','X5','X6','X7','Z4','M3','M4','M5','i3','i4'],
+  'Mercedes-Benz':['A-Class','B-Class','C-Class','CLA','CLS','E-Class','G-Class','GLA','GLB','GLC','GLE','GLS','S-Class','SL','AMG GT'],
+  'Audi':['A1','A3','A4','A5','A6','A7','A8','Q2','Q3','Q5','Q7','Q8','TT','R8','e-tron'],
+  'Peugeot':['106','206','207','208','2008','301','306','308','3008','405','406','407','408','5008','508','Partner','Expert','Boxer'],
+  'Renault':['Logan','Symbol','Duster','Megane','Clio','Fluence','Laguna','Koleos','Kadjar','Captur','Scenic','Sandero','Kwid','Talisman'],
+  'Jeep':['Wrangler','Cherokee','Grand Cherokee','Compass','Renegade','Gladiator','Commander'],
+  'Mazda':['Mazda2','Mazda3','Mazda6','CX-3','CX-5','CX-9','MX-5','CX-30'],
+  'Subaru':['Impreza','Outback','Forester','XV','Legacy','Ascent','WRX','BRZ'],
+  'Land Rover':['Range Rover','Range Rover Sport','Range Rover Evoque','Discovery','Discovery Sport','Defender','Freelander'],
+  'Lexus':['IS','ES','GS','LS','RX','NX','GX','LX','UX','RC'],
+  'Infiniti':['Q50','Q60','Q70','QX30','QX50','QX60','QX80'],
+  'Porsche':['Cayenne','Macan','Panamera','911','Boxster','Cayman','Taycan'],
+  'Fiat':['Punto','500','Tipo','Doblo','Bravo','Siena','Linea','Panda'],
+  'Volvo':['S60','S90','V60','V90','XC40','XC60','XC90'],
+  'Isuzu':['D-Max','MU-X','Trooper','Rodeo','NPR'],
+  'GMC':['Sierra','Yukon','Terrain','Acadia','Canyon','Envoy'],
+  'Cadillac':['Escalade','CT4','CT5','XT4','XT5','XT6'],
+  'Dodge':['Ram','Charger','Challenger','Durango','Journey','Dart'],
+  'Opel':['Astra','Corsa','Mokka','Insignia','Grandland','Crossland','Zafira','Vectra'],
+  'MG':['MG3','MG5','MG6','MG7','HS','ZS','RX5'],
+  'Chery':['Arrizo 3','Arrizo 5','Arrizo 7','Tiggo 2','Tiggo 5','Tiggo 7','Tiggo 8','QQ'],
+  'BAIC':['X25','X35','X55','X65','BJ40','Beijing U5','Beijing X7'],
+  'Geely':['Emgrand','Coolray','Atlas','Tugella','Azkarra'],
+  'Great Wall':['Haval H2','Haval H6','Haval H9','Wingle'],
+  'GAC':['GS3','GS4','GS7','GS8','GA3','GA4'],
+  'BYD':['F3','S6','Tang','Han','Song','Yuan'],
+  'DFSK':['Glory 580','Glory 500','C35','K07'],
+  'Brilliance':['V5','V6','H530','H320'],
+  'Seat':['Ibiza','Leon','Arona','Ateca','Tarraco'],
+  'Skoda':['Octavia','Fabia','Scala','Rapid','Kodiaq','Karoq','Superb'],
+  'Mini':['Cooper','Cooper S','Countryman','Clubman','Convertible'],
+  'Citroën':['C3','C4','C5','Berlingo','Xsara','Picasso','C-Crosser'],
+  'Lincoln':['Navigator','Aviator','Nautilus','Corsair','Continental'],
+  'Buick':['Enclave','Envision','Encore','LaCrosse','Verano'],
+  'Tesla':['Model 3','Model S','Model X','Model Y','Cybertruck'],
+  'Jaguar':['XE','XF','XJ','E-Pace','F-Pace','I-Pace','F-Type'],
+  'Maserati':['Ghibli','Quattroporte','Levante','Grecale','GranTurismo'],
+  'Alfa Romeo':['Giulia','Stelvio','Tonale','Giulietta','159'],
+  'Ram':['1500','2500','3500','ProMaster'],
+  'Chrysler':['300','Pacifica','Voyager'],
+  'Zotye':['T600','T700','SR7','Z300'],
+};
+
+const YEARS = Array.from({length:2026-1980+1},(_,i)=>String(2026-i));
+
+const COMMON_PARTS_EN = [
+  'Air Filter','Oil Filter','Fuel Filter','Cabin Air Filter',
+  'Brake Pads','Brake Rotors','Brake Discs','Brake Calipers','Brake Drums','Brake Shoes','Brake Lines','Brake Fluid',
+  'Alternator','Starter Motor','Battery','Battery Cable',
+  'Spark Plugs','Ignition Coils','Ignition Switch','Distributor Cap',
+  'Timing Belt','Timing Chain','Timing Kit','Timing Tensioner',
+  'Radiator','Water Pump','Thermostat','Coolant Hose','Radiator Fan','Fan Belt','Radiator Cap',
+  'Serpentine Belt','V-Belt','Drive Belt','Belt Tensioner','Idler Pulley',
+  'Shock Absorbers','Struts','Coil Springs','Leaf Springs','Control Arm','Ball Joint','Tie Rod End','Tie Rod','Sway Bar Link','Sway Bar Bushing',
+  'CV Axle','CV Boot','Drive Shaft','Universal Joint',
+  'Clutch Kit','Clutch Disc','Flywheel','Pressure Plate','Release Bearing',
+  'Fuel Pump','Fuel Injectors','Fuel Pressure Regulator','Throttle Body','Throttle Cable',
+  'Mass Air Flow Sensor','Oxygen Sensor','MAP Sensor','Crankshaft Position Sensor','Camshaft Sensor','Knock Sensor',
+  'ABS Sensor','ABS Module','Wheel Bearing','Hub Assembly','Wheel Stud',
+  'Power Steering Pump','Steering Rack','Steering Gear','Power Steering Hose','Tie Rod End',
+  'Head Gasket','Valve Cover Gasket','Oil Pan Gasket','Intake Manifold Gasket','Exhaust Manifold Gasket',
+  'Engine Mount','Transmission Mount','Strut Mount',
+  'AC Compressor','AC Condenser','AC Evaporator','Blower Motor','Blower Resistor','AC Pressure Switch',
+  'Wiper Blades','Wiper Motor','Wiper Linkage',
+  'Headlight Bulb','Headlight Assembly','Tail Light','Brake Light','Turn Signal','Fog Light',
+  'Catalytic Converter','Exhaust Manifold','Muffler','Exhaust Pipe','Oxygen Sensor',
+  'Transmission Filter','Transmission Fluid','Transfer Case','Differential','Differential Fluid',
+  'PCV Valve','EGR Valve','EVAP Canister','Throttle Position Sensor',
+  'Front Bumper','Rear Bumper','Hood','Fender','Door Panel','Side Mirror','Door Handle',
+  'Windshield','Door Glass','Quarter Glass',
+  'Oil Drain Plug','Oil Cap','Dipstick',
+  'Caliper Bracket','Caliper Pin','Rotor Shield',
+];
+
+const COMMON_PARTS_AR = [
+  'فلتر الهواء','فلتر الزيت','فلتر البنزين','فلتر الكابين',
+  'تيل الفرامل','ديسك الفرامل','أسطوانة الفرامل','أحذية الفرامل','خرطوم الفرامل',
+  'دينمو','بادئ التشغيل','بطارية','كابل البطارية',
+  'بواجي','كويلات الإشعال','طقم إشعال',
+  'تايمنج بيلت','سلسلة التوقيت','طقم التوقيت','شد التوقيت',
+  'رادياتير','طلمبة المياه','ثيرموستات','خرطوم التبريد','مروحة الرادياتير','سير المروحة',
+  'سير تايمنج','سير المحرك','شداد السير','بكرة التوجيه',
+  'كفر العجل','زنبرك','كارة','كرة القيادة','ذراع التوجيه','رود التوجيه',
+  'شفت عجلة','جلبة ميكانيكية','شافت الكاردان',
+  'طقم كلتش','قرص الكلتش','الفلاية','طبق الضغط','مساور الكلتش',
+  'طلمبة البنزين','رشاشات الوقود','جسم الخانق',
+  'حساس تدفق الهواء','حساس الأكسجين','حساس الكرنك','حساس الكامة','حساس الطرق',
+  'حساس ABS','طقم مساور','كوز العجلة',
+  'طلمبة الباور','ترس التوجيه','خرطوم الباور',
+  'جوانة الهيد','جوانة غطاء الصمامات','جوانة الكارتر',
+  'كاوتش المحرك','كاوتش علبة التروس',
+  'كمبروسر التكييف','كثافة التكييف','مبخرة التكييف','مروحة التدفئة',
+  'ماسحات الزجاج','موتور الماسحات',
+  'لمبة الشمعة الأمامية','كشافات','إشارة الانعطاف','شبورة',
+  'كاتليك','مانيفولد العادم','شكمان','ماسورة العادم',
+  'فلتر الجير','زيت الجير','فرق السرعة',
+  'صمام PCV','صمام EGR',
+  'بمبر أمامي','بمبر خلفي','كبوت','رنج','تابلوه','مرآة جانبية','مقبض الباب',
+  'زجاج أمامي','زجاج الباب',
+  'سداد الزيت','غطاء الزيت',
+];
+
+// ═══════════════════════ TRANSLATIONS ════════════════════════════════════════
 const T = {
-  en: {
-    heroTitle: 'The Google Shopping of <span class="text-blue-600">Car Parts</span>.',
-    heroSub: 'Find the cheapest OEM & aftermarket parts from Egyptian markets in seconds. Zero noise, just real options sorted by price.',
-    lMake:'Make', phMake:'e.g. Nissan',
-    lModel:'Model', phModel:'e.g. Qashqai',
-    lYear:'Year', phYear:'e.g. 2025',
-    lPart:'Part Name', phPart:'e.g. Brake Pads, Alternator, Oil Filter',
-    btnSearch:'Find Best Prices', btnSearchAgain:'Search Again',
-    loadingMsg:'Searching Egyptian markets for the best prices...',
+  en:{
+    heroTitle:'The Google Shopping of <span class="text-blue-600">Car Parts</span>.',
+    heroSub:'Find the cheapest OEM & aftermarket parts from Egyptian markets in seconds.',
+    lMake:'Make',phMake:'e.g. Toyota',
+    lModel:'Model',phModel:'e.g. Corolla',
+    lYear:'Year',phYear:'e.g. 2020',
+    lPart:'Part Name',phPart:'e.g. Brake Pads, Alternator, Oil Filter',
+    btnSearch:'Find Best Prices',btnSearchAgain:'Search Again',
+    loadingMsg:'Searching Egyptian markets...',
     loadingSub:(mk,mo,yr,pt)=>`Querying ${mk} ${mo} ${yr} — ${pt}`,
     resultsFor:(n,pt)=>`${n} results for <span class="text-blue-600">${pt}</span>`,
-    errTitle:'Something went wrong', errSub:"We couldn't fetch the results right now.", btnRetry:'Try Again',
-    noTitle:'No parts found', noSub:"We couldn't find any listings for this exact part.",
-    seller:'Seller', partNum:'Part #', buyNow:'Buy Now', cheapest:'Cheapest',
-    oem:'OEM', aftermarket:'Aftermarket', condNew:'New', condReman:'Remanufactured', condUsed:'Used', by:'by',
+    errTitle:'Something went wrong',errSub:"We couldn't fetch results. Check your API key or try again.",btnRetry:'Try Again',btnFixKey:'Update API Key',
+    noTitle:'No parts found',noSub:'No listings found for this part.',
+    seller:'Seller',partNum:'Part #',buyNow:'Buy Now',cheapest:'Cheapest',
+    oem:'OEM',aftermarket:'Aftermarket',condNew:'New',condReman:'Remanufactured',condUsed:'Used',by:'by',
     switchLang:'العربية',
+    noMatch:'No matches',
+    modalTitle:'API Key Setup',
+    modalDesc:'BestPart uses the free <a href="https://console.groq.com/keys" target="_blank" class="text-blue-600 underline">Groq API</a>. Your key is saved in your browser only.',
+    modalLbl:'Groq API Key',modalPh:'gsk_...',modalSave:'Save Key',modalCancel:'Cancel',
+    modalErr:'Key cannot be empty.',
     currency:(p)=>`EGP ${p.toLocaleString('en-EG')}`,
   },
-  ar: {
-    heroTitle:'جوجل التسوق لقطع غيار السيارات.',
-    heroSub:'ابحث عن أرخص قطع السيارات الأصلية والبديلة من السوق المصري في ثوانٍ. بدون تشويش، فقط خيارات حقيقية مرتبة بالسعر.',
-    lMake:'الماركة', phMake:'مثال: نيسان',
-    lModel:'الموديل', phModel:'مثال: قشقاي',
-    lYear:'السنة', phYear:'مثال: 2025',
-    lPart:'اسم القطعة', phPart:'مثال: تيل فرامل، دينمو، فلتر زيت',
-    btnSearch:'ابحث عن أفضل الأسعار', btnSearchAgain:'بحث جديد',
-    loadingMsg:'جاري البحث في السوق المصري عن أفضل الأسعار...',
+  ar:{
+    heroTitle:'جوجل شوبينج لقطع غيار السيارات.',
+    heroSub:'ابحث عن أرخص قطع السيارات الأصلية والبديلة من السوق المصري في ثوانٍ.',
+    lMake:'الماركة',phMake:'مثال: تويوتا',
+    lModel:'الموديل',phModel:'مثال: كورولا',
+    lYear:'السنة',phYear:'مثال: 2020',
+    lPart:'اسم القطعة',phPart:'مثال: تيل فرامل، دينمو، فلتر زيت',
+    btnSearch:'ابحث عن أفضل الأسعار',btnSearchAgain:'بحث جديد',
+    loadingMsg:'جاري البحث في السوق المصري...',
     loadingSub:(mk,mo,yr,pt)=>`البحث عن: ${mk} ${mo} ${yr} — ${pt}`,
     resultsFor:(n,pt)=>`${n} نتيجة لـ <span class="text-blue-600">${pt}</span>`,
-    errTitle:'حدث خطأ', errSub:'لم نتمكن من جلب النتائج الآن.', btnRetry:'حاول مجدداً',
-    noTitle:'لم يتم العثور على قطع', noSub:'لم نجد أي قوائم لهذه القطعة تحديداً.',
-    seller:'البائع', partNum:'رقم القطعة', buyNow:'اشتر الآن', cheapest:'الأرخص',
-    oem:'أصلي', aftermarket:'بديل', condNew:'جديد', condReman:'مُجدَّد', condUsed:'مستعمل', by:'بواسطة',
+    errTitle:'حدث خطأ',errSub:'تعذّر جلب النتائج. تحقق من مفتاح API أو حاول مجدداً.',btnRetry:'حاول مجدداً',btnFixKey:'تحديث مفتاح API',
+    noTitle:'لم يتم العثور على قطع',noSub:'لم نجد أي قوائم لهذه القطعة.',
+    seller:'البائع',partNum:'رقم القطعة',buyNow:'اشتر الآن',cheapest:'الأرخص',
+    oem:'أصلي',aftermarket:'بديل',condNew:'جديد',condReman:'مُجدَّد',condUsed:'مستعمل',by:'بواسطة',
     switchLang:'English',
+    noMatch:'لا توجد نتائج',
+    modalTitle:'إعداد مفتاح API',
+    modalDesc:'يستخدم BestPart <a href="https://console.groq.com/keys" target="_blank" class="text-blue-600 underline">Groq API</a> المجانية. يُحفظ مفتاحك في متصفحك فقط.',
+    modalLbl:'مفتاح Groq API',modalPh:'gsk_...',modalSave:'حفظ المفتاح',modalCancel:'إلغاء',
+    modalErr:'لا يمكن أن يكون المفتاح فارغاً.',
     currency:(p)=>`${p.toLocaleString('ar-EG')} ج.م`,
   }
 };
 
-// ── STATE ───────────────────────────────────────────────────────────────────
+// ═══════════════════════ STATE ════════════════════════════════════════════════
 let lang = localStorage.getItem('bp_lang') || 'en';
 let lastQuery = null;
+let modalPendingSearch = false;
 
-// ── LANG ────────────────────────────────────────────────────────────────────
-function applyLang() {
-  const t = T[lang], ar = lang === 'ar';
+// ═══════════════════════ LANG ══════════════════════════════════════════════════
+function applyLang(){
+  const t = T[lang], ar = lang==='ar';
   document.documentElement.lang = lang;
-  document.documentElement.dir = ar ? 'rtl' : 'ltr';
-  document.body.className = ar ? 'arabic bg-gray-50 min-h-screen' : 'bg-gray-50 min-h-screen';
+  document.documentElement.dir  = ar ? 'rtl' : 'ltr';
+  document.body.className = (ar?'arabic ':')+'bg-gray-50 min-h-screen';
 
   document.getElementById('hero-title').innerHTML = t.heroTitle;
-  document.getElementById('hero-sub').textContent = t.heroSub;
-  document.getElementById('lbl-make').textContent = t.lMake;
-  document.getElementById('inp-make').placeholder = t.phMake;
+  document.getElementById('hero-sub').textContent  = t.heroSub;
+  document.getElementById('lbl-make').textContent  = t.lMake;
+  document.getElementById('inp-make').placeholder  = t.phMake;
   document.getElementById('lbl-model').textContent = t.lModel;
   document.getElementById('inp-model').placeholder = t.phModel;
-  document.getElementById('lbl-year').textContent = t.lYear;
-  document.getElementById('inp-year').placeholder = t.phYear;
-  document.getElementById('lbl-part').textContent = t.lPart;
-  document.getElementById('inp-part').placeholder = t.phPart;
-  document.getElementById('btn-search').textContent = t.btnSearch;
-  document.getElementById('btn-search-again').textContent = t.btnSearchAgain;
-  document.getElementById('lang-btn-home').textContent = t.switchLang;
-  document.getElementById('lang-btn-results').textContent = t.switchLang;
-  document.getElementById('loading-msg').textContent = t.loadingMsg;
-  document.getElementById('err-title').textContent = t.errTitle;
-  document.getElementById('err-sub').textContent = t.errSub;
-  document.getElementById('btn-retry').textContent = t.btnRetry;
+  document.getElementById('lbl-year').textContent  = t.lYear;
+  document.getElementById('inp-year').placeholder  = t.phYear;
+  document.getElementById('lbl-part').textContent  = t.lPart;
+  document.getElementById('inp-part').placeholder  = t.phPart;
+  document.getElementById('btn-search').textContent      = t.btnSearch;
+  document.getElementById('btn-search-again').textContent= t.btnSearchAgain;
+  document.getElementById('lang-btn-home').textContent   = t.switchLang;
+  document.getElementById('lang-btn-results').textContent= t.switchLang;
+  document.getElementById('loading-msg').textContent     = t.loadingMsg;
+  document.getElementById('err-title').textContent  = t.errTitle;
+  document.getElementById('err-sub').textContent    = t.errSub;
+  document.getElementById('btn-retry').textContent  = t.btnRetry;
+  document.getElementById('btn-fix-key').textContent= t.btnFixKey;
+  document.getElementById('modal-title').textContent= t.modalTitle;
+  document.getElementById('modal-desc').innerHTML   = t.modalDesc;
+  document.getElementById('modal-lbl').textContent  = t.modalLbl;
+  document.getElementById('modal-key-inp').placeholder = t.modalPh;
+  document.getElementById('modal-save').textContent = t.modalSave;
+  document.getElementById('modal-cancel').textContent= t.modalCancel;
 
-  // flip back arrow for RTL
   document.getElementById('back-icon').innerHTML = ar
     ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>'
     : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>';
 }
 
-function toggleLang() {
-  lang = lang === 'en' ? 'ar' : 'en';
+function toggleLang(){
+  lang = lang==='en'?'ar':'en';
   localStorage.setItem('bp_lang', lang);
   applyLang();
 }
 
-// ── PAGE NAV ────────────────────────────────────────────────────────────────
-function showPage(id) {
-  ['page-home','page-loading','page-results','page-error'].forEach(p => {
+// ═══════════════════════ PAGE NAV ════════════════════════════════════════════
+function showPage(id){
+  ['page-home','page-loading','page-results','page-error'].forEach(p=>{
     const el = document.getElementById(p);
     el.classList.add('hidden');
     el.classList.remove('flex');
   });
   const el = document.getElementById(id);
   el.classList.remove('hidden');
-  if (id === 'page-loading' || id === 'page-error') el.classList.add('flex');
-  window.scrollTo(0, 0);
+  if(id==='page-loading'||id==='page-error') el.classList.add('flex');
+  window.scrollTo(0,0);
 }
 
-// ── API KEY ─────────────────────────────────────────────────────────────────
-function getApiKey() {
-  let key = localStorage.getItem('bp_groq_key');
-  if (!key) {
-    key = prompt('Paste your free Groq API key below.\n\nGet one free at: console.groq.com/keys');
-    if (key && key.trim()) {
-      localStorage.setItem('bp_groq_key', key.trim());
-    } else {
-      return null;
-    }
+// ═══════════════════════ API KEY MODAL ═══════════════════════════════════════
+function openModal(){
+  const key = localStorage.getItem('bp_groq_key')||'';
+  document.getElementById('modal-key-inp').value = key ? '••••••••••••'+key.slice(-4) : '';
+  document.getElementById('modal-err').classList.add('hidden');
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>{ if(!key) document.getElementById('modal-key-inp').focus(); },50);
+}
+
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  modalPendingSearch = false;
+}
+
+function saveKey(){
+  let val = document.getElementById('modal-key-inp').value.trim();
+  if(val.startsWith('••')){
+    // User didn't change the masked value — keep existing key
+    closeModal();
+    if(modalPendingSearch && lastQuery) runSearch(lastQuery);
+    return;
   }
-  return key.trim();
+  if(!val){ 
+    const errEl = document.getElementById('modal-err');
+    errEl.textContent = T[lang].modalErr;
+    errEl.classList.remove('hidden');
+    return;
+  }
+  localStorage.setItem('bp_groq_key', val);
+  closeModal();
+  if(modalPendingSearch && lastQuery) runSearch(lastQuery);
 }
 
-// ── SEARCH ──────────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are a car parts price comparison assistant for the Egyptian automotive market.
-Generate realistic car parts listings for Egypt priced in EGP (Egyptian Pound). 1 USD ≈ 48-50 EGP.
-Rules:
-- Mix of OEM (original, more expensive) and Aftermarket (cheaper) parts.
-- Use real Egyptian seller domains: olx.com.eg, hatla2ee.com, yashreely.com, noon.com, amazon.eg, jumia.com.eg.
-- Realistic part numbers for the make/model/year.
-- Shipping notes in English or Arabic (e.g. "توصيل في 2-3 أيام", "Free delivery Cairo", "Self pickup Wekalet el Balah").
-- Condition: mostly New, sometimes Remanufactured or Used.
-- 8 to 12 results, sorted by price ascending (cheapest first).
-- Aftermarket brands: Delphi, Monroe, Bosch, Gates, NGK, Brembo, ACDelco, Moog, Aisin, TRW, Denso, Valeo, Champion.
-Respond ONLY with a valid JSON array. No markdown. No explanation. No code fences.`;
+// close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal-overlay')) closeModal();
+});
+// save on Enter in key input
+document.getElementById('modal-key-inp').addEventListener('keydown', e=>{
+  if(e.key==='Enter') saveKey();
+});
 
-async function handleSearch(e) {
+function getApiKey(){
+  return localStorage.getItem('bp_groq_key') || null;
+}
+
+// ═══════════════════════ AUTOCOMPLETE ENGINE ═══════════════════════════════════
+function buildAC(inputId, ddId, getItems, onSelect){
+  const inp = document.getElementById(inputId);
+  const dd  = document.getElementById(ddId);
+  let activeIdx = -1;
+
+  function filter(q){
+    const items = getItems();
+    const lq = q.toLowerCase();
+    return lq ? items.filter(x=>x.toLowerCase().includes(lq)) : items;
+  }
+
+  function render(matches){
+    activeIdx = -1;
+    if(!matches.length){
+      dd.innerHTML = `<li class="no-match">${T[lang].noMatch}</li>`;
+      dd.classList.add('open');
+      return;
+    }
+    dd.innerHTML = matches.slice(0,40).map((m,i)=>
+      `<li data-i="${i}" data-val="${m.replace(/"/g,'&quot;')}">${m}</li>`
+    ).join('');
+    dd.classList.add('open');
+    dd.querySelectorAll('li[data-val]').forEach(li=>{
+      li.addEventListener('mousedown', e=>{
+        e.preventDefault();
+        pick(li.dataset.val);
+      });
+    });
+  }
+
+  function pick(val){
+    inp.value = val;
+    dd.classList.remove('open');
+    activeIdx = -1;
+    onSelect && onSelect(val);
+    inp.dispatchEvent(new Event('change'));
+  }
+
+  function close(){ dd.classList.remove('open'); activeIdx = -1; }
+
+  inp.addEventListener('input', ()=>{
+    const q = inp.value;
+    if(!q.trim()){ close(); return; }
+    render(filter(q));
+  });
+
+  inp.addEventListener('focus', ()=>{
+    const q = inp.value.trim();
+    render(filter(q || ''));
+  });
+
+  inp.addEventListener('blur', ()=>{ setTimeout(close, 150); });
+
+  inp.addEventListener('keydown', e=>{
+    const items = dd.querySelectorAll('li[data-val]');
+    if(!items.length) return;
+    if(e.key==='ArrowDown'){
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx+1, items.length-1);
+    } else if(e.key==='ArrowUp'){
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx-1, 0);
+    } else if(e.key==='Enter' && activeIdx>=0){
+      e.preventDefault();
+      pick(items[activeIdx].dataset.val);
+      return;
+    } else if(e.key==='Escape'){
+      close(); return;
+    } else return;
+    items.forEach((li,i)=>li.classList.toggle('active',i===activeIdx));
+    items[activeIdx]?.scrollIntoView({block:'nearest'});
+  });
+}
+
+// Setup Make AC
+buildAC('inp-make','dd-make',
+  ()=>CAR_MAKES,
+  (val)=>{
+    // clear model when make changes
+    document.getElementById('inp-model').value = '';
+  }
+);
+
+// Setup Model AC — items depend on currently selected make
+buildAC('inp-model','dd-model',
+  ()=>{
+    const make = document.getElementById('inp-make').value.trim();
+    const models = CAR_MODELS[make];
+    return models ? models : Object.values(CAR_MODELS).flat();
+  }
+);
+
+// Setup Year AC
+buildAC('inp-year','dd-year', ()=>YEARS);
+
+// Setup Part AC — bilingual
+buildAC('inp-part','dd-part',
+  ()=>lang==='ar' ? COMMON_PARTS_AR : COMMON_PARTS_EN
+);
+
+// ═══════════════════════ SEARCH ══════════════════════════════════════════════
+const SYS = `You are a car parts price comparison assistant for the Egyptian automotive market.
+Generate realistic car parts listings for Egypt priced in EGP. 1 USD ≈ 48–50 EGP.
+Rules:
+- Mix OEM (original, pricier) and Aftermarket (cheaper) parts.
+- Use real Egyptian seller domains: olx.com.eg, hatla2ee.com, yashreely.com, noon.com, amazon.eg, jumia.com.eg.
+- Realistic part numbers for make/model/year.
+- Shipping notes in English or Arabic (e.g. "توصيل خلال 2-3 أيام", "Free delivery Cairo", "استلام من وكالة البلح").
+- Condition: mostly New, sometimes Remanufactured or Used.
+- Return 8–12 results sorted cheapest first.
+- Aftermarket brands: Delphi, Monroe, Bosch, Gates, NGK, Brembo, ACDelco, Moog, Aisin, TRW, Denso, Valeo, Champion.
+Return ONLY a valid JSON array. No markdown, no code blocks, no explanations.`;
+
+async function handleSearch(e){
   e.preventDefault();
   const make     = document.getElementById('inp-make').value.trim();
   const model    = document.getElementById('inp-model').value.trim();
-  const year     = parseInt(document.getElementById('inp-year').value.trim());
+  const yearRaw  = document.getElementById('inp-year').value.trim();
   const partName = document.getElementById('inp-part').value.trim();
-  if (!make || !model || !year || !partName) return;
-  lastQuery = { make, model, year, partName };
+  const year     = parseInt(yearRaw);
+  if(!make||!model||!year||!partName) return;
+
+  lastQuery = {make,model,year,partName};
+
+  const key = getApiKey();
+  if(!key){
+    modalPendingSearch = true;
+    openModal();
+    return;
+  }
   await runSearch(lastQuery);
 }
 
-async function retrySearch() {
-  if (lastQuery) await runSearch(lastQuery);
+async function retrySearch(){
+  if(!lastQuery) return;
+  const key = getApiKey();
+  if(!key){ modalPendingSearch = true; openModal(); return; }
+  await runSearch(lastQuery);
 }
 
-async function runSearch({ make, model, year, partName }) {
+async function runSearch({make,model,year,partName}){
   const t = T[lang];
   const key = getApiKey();
-  if (!key) return;
+  if(!key){ modalPendingSearch = true; openModal(); return; }
 
   showPage('page-loading');
   document.getElementById('loading-msg').textContent = t.loadingMsg;
-  document.getElementById('loading-sub').textContent = t.loadingSub(make, model, year, partName);
+  document.getElementById('loading-sub').textContent = t.loadingSub(make,model,year,partName);
 
   const userPrompt =
 `Find car parts listings in Egypt for:
 - Vehicle: ${year} ${make} ${model}
 - Part needed: ${partName}
 
-Return a JSON array of 8-12 part listings sorted by price (EGP) ascending. Each object must have:
+Return a JSON array of 8–12 listings sorted by price (EGP) ascending. Each item:
 {
   "id": "unique string",
-  "name": "full part name including brand",
-  "price": number (EGP),
+  "name": "full part name with brand",
+  "price": number (EGP, no commas),
   "type": "OEM" or "Aftermarket",
   "seller": "seller name",
-  "url": "realistic URL on the seller's Egyptian domain",
+  "url": "URL on correct Egyptian domain",
   "condition": "New" or "Remanufactured" or "Used",
-  "brand": "brand name or null",
+  "brand": "brand or null",
   "partNumber": "part number or null",
-  "rating": number 3.5-5.0 or null,
-  "shippingNote": "shipping info in English or Arabic, or null"
+  "rating": float 3.5–5.0 or null,
+  "shippingNote": "shipping info in English or Arabic or null"
 }
-Return ONLY the JSON array. No other text.`;
+Return ONLY the JSON array.`;
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 3000,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user',   content: userPrompt },
-        ],
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        max_tokens:3200,
+        messages:[{role:'system',content:SYS},{role:'user',content:userPrompt}],
       }),
     });
 
-    if (res.status === 401) {
-      localStorage.removeItem('bp_groq_key');
-      alert('Invalid API key. Please try again with a valid Groq key from console.groq.com/keys');
-      showPage('page-home');
+    if(res.status===401){
+      // Don't wipe the key — show modal so user can correct it
+      modalPendingSearch = true;
+      document.getElementById('modal-err').textContent = 'API key rejected (401). Please check and re-enter it.';
+      document.getElementById('modal-err').classList.remove('hidden');
+      openModal();
       return;
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
     const raw  = (data.choices?.[0]?.message?.content ?? '[]')
-                   .replace(/```json\s*/gi, '')
-                   .replace(/```/g, '')
-                   .trim();
+                  .replace(/```json\s*/gi,'').replace(/```/g,'').trim();
 
     let parsed;
-    try { parsed = JSON.parse(raw); }
-    catch { throw new Error('JSON parse failed'); }
+    try{ parsed = JSON.parse(raw); }
+    catch{ 
+      // Try to extract JSON array from response
+      const m = raw.match(/\[[\s\S]*\]/);
+      if(m) parsed = JSON.parse(m[0]);
+      else throw new Error('JSON parse failed');
+    }
 
     let results = Array.isArray(parsed)
       ? parsed
-      : (Object.values(parsed).find(v => Array.isArray(v)) ?? []);
+      : (Object.values(parsed).find(v=>Array.isArray(v)) ?? []);
 
     results = results
-      .map((r, i) => ({
-        id:           String(r.id ?? `p${i}`),
-        name:         String(r.name ?? ''),
-        price:        Number(r.price ?? 0),
-        type:         r.type === 'OEM' ? 'OEM' : 'Aftermarket',
-        seller:       String(r.seller ?? ''),
-        url:          String(r.url ?? '#'),
-        condition:    ['New','Remanufactured','Used'].includes(r.condition) ? r.condition : 'New',
-        brand:        r.brand  ?? null,
-        partNumber:   r.partNumber ?? null,
-        rating:       r.rating != null ? Number(r.rating) : null,
-        shippingNote: r.shippingNote ?? null,
+      .map((r,i)=>({
+        id:           String(r.id??`p${i}`),
+        name:         String(r.name??''),
+        price:        Number(String(r.price??0).replace(/[^0-9.]/g,'')),
+        type:         r.type==='OEM'?'OEM':'Aftermarket',
+        seller:       String(r.seller??''),
+        url:          String(r.url??'#'),
+        condition:    ['New','Remanufactured','Used'].includes(r.condition)?r.condition:'New',
+        brand:        r.brand??null,
+        partNumber:   r.partNumber??null,
+        rating:       r.rating!=null?Number(r.rating):null,
+        shippingNote: r.shippingNote??null,
       }))
-      .sort((a, b) => a.price - b.price);
+      .sort((a,b)=>a.price-b.price);
 
-    renderResults(results, { make, model, year, partName });
+    renderResults(results,{make,model,year,partName});
 
-  } catch (err) {
+  } catch(err){
     console.error(err);
     showPage('page-error');
   }
 }
 
-// ── RENDER ──────────────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// ═══════════════════════ RENDER ═══════════════════════════════════════════════
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function renderResults(results, { make, model, year, partName }) {
+function renderResults(results,{make,model,year,partName}){
   const t = T[lang];
-  document.getElementById('results-title').innerHTML = t.resultsFor(results.length, esc(partName));
-  document.getElementById('results-sub').textContent = `${year} ${make} ${model}`;
+  document.getElementById('results-title').innerHTML = t.resultsFor(results.length,esc(partName));
+  document.getElementById('results-sub').textContent  = `${year} ${make} ${model}`;
 
   const grid = document.getElementById('results-grid');
-
-  if (results.length === 0) {
-    grid.innerHTML = `
-      <div class="col-span-full text-center py-20 bg-white border border-gray-200 rounded-xl">
-        <p class="text-xl font-bold text-gray-800 mb-2">${esc(t.noTitle)}</p>
-        <p class="text-gray-500">${esc(t.noSub)}</p>
-      </div>`;
-    showPage('page-results');
-    return;
+  if(!results.length){
+    grid.innerHTML=`<div class="col-span-full text-center py-20 bg-white border border-gray-200 rounded-xl">
+      <p class="text-xl font-bold text-gray-800 mb-2">${esc(t.noTitle)}</p>
+      <p class="text-gray-500">${esc(t.noSub)}</p></div>`;
+    showPage('page-results'); return;
   }
 
-  const cond = { New: t.condNew, Remanufactured: t.condReman, Used: t.condUsed };
+  const cond = {New:t.condNew,Remanufactured:t.condReman,Used:t.condUsed};
 
-  grid.innerHTML = results.map((p, i) => {
-    const cheap = i === 0;
-
-    const oemBadge = p.type === 'OEM'
+  grid.innerHTML = results.map((p,i)=>{
+    const cheap = i===0;
+    const oemBadge = p.type==='OEM'
       ? `<span class="px-2 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">${t.oem}</span>`
       : `<span class="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">${t.aftermarket}</span>`;
-
-    const condBadge = `<span class="px-2 py-0.5 text-xs font-bold rounded-full bg-gray-100 text-gray-600">${esc(cond[p.condition] ?? p.condition)}</span>`;
-
-    const cheapTag = cheap
+    const condBadge = `<span class="px-2 py-0.5 text-xs font-bold rounded-full bg-gray-100 text-gray-600">${esc(cond[p.condition]??p.condition)}</span>`;
+    const cheapTag  = cheap
       ? `<div class="absolute top-0 end-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1">
            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-           ${esc(t.cheapest)}
-         </div>`
-      : '';
-
-    const stars = p.rating
-      ? `<span class="flex items-center text-amber-500 text-xs ms-1 bg-amber-50 px-1.5 py-0.5 rounded">${p.rating} ★</span>`
-      : '';
-
-    const partNumRow = p.partNumber
-      ? `<div class="flex items-center justify-between">
-           <span class="text-gray-400">${esc(t.partNum)}</span>
-           <span class="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">${esc(p.partNumber)}</span>
-         </div>`
-      : '';
-
-    const shippingRow = p.shippingNote
-      ? `<div class="flex items-center gap-2 text-gray-400 pt-2 border-t border-gray-100 text-sm">
-           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-           <span>${esc(p.shippingNote)}</span>
-         </div>`
-      : '';
-
-    const brandRow = p.brand
-      ? `<p class="text-sm text-gray-400 mt-1">${esc(t.by)} ${esc(p.brand)}</p>`
-      : '';
-
-    const border  = cheap ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200';
-    const btnCls  = cheap ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800';
-
+           ${esc(t.cheapest)}</div>` : '';
+    const stars = p.rating ? `<span class="flex items-center text-amber-500 text-xs ms-1 bg-amber-50 px-1.5 py-0.5 rounded">${p.rating} ★</span>` : '';
+    const pnRow = p.partNumber ? `<div class="flex items-center justify-between"><span class="text-gray-400">${esc(t.partNum)}</span><span class="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">${esc(p.partNumber)}</span></div>` : '';
+    const shipRow = p.shippingNote ? `<div class="flex items-center gap-2 text-gray-400 pt-2 border-t border-gray-100 text-sm">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      <span>${esc(p.shippingNote)}</span></div>` : '';
+    const brandRow = p.brand ? `<p class="text-sm text-gray-400 mt-1">${esc(t.by)} ${esc(p.brand)}</p>` : '';
+    const border = cheap ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200';
+    const btnCls = cheap ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800';
+    const safeUrl = esc(p.url.replace(/'/g,'%27'));
     return `
       <div class="card bg-white border ${border} rounded-xl shadow-sm flex flex-col relative overflow-hidden fade-in" style="transition:box-shadow .2s">
         ${cheapTag}
         <div class="p-5 pb-3">
           <div class="flex flex-wrap gap-2 mb-3">${oemBadge}${condBadge}</div>
-          <h3 class="font-bold text-lg leading-tight line-clamp-2 text-gray-900">${esc(p.name)}</h3>
-          ${brandRow}
+          <h3 class="font-bold text-lg leading-tight line-clamp-2 text-gray-900">${esc(p.name)}</h3>${brandRow}
         </div>
         <div class="px-5 flex-1">
           <div class="text-3xl font-extrabold text-blue-600 mb-4">${esc(t.currency(p.price))}</div>
           <div class="space-y-2 text-sm">
-            <div class="flex items-center justify-between">
-              <span class="text-gray-400">${esc(t.seller)}</span>
-              <span class="font-semibold text-gray-800 flex items-center">${esc(p.seller)}${stars}</span>
-            </div>
-            ${partNumRow}
-            ${shippingRow}
+            <div class="flex items-center justify-between"><span class="text-gray-400">${esc(t.seller)}</span>
+              <span class="font-semibold text-gray-800 flex items-center">${esc(p.seller)}${stars}</span></div>
+            ${pnRow}${shipRow}
           </div>
         </div>
         <div class="p-5 pt-4">
-          <button onclick="window.open('${esc(p.url)}','_blank','noopener,noreferrer')"
+          <button onclick="window.open('${safeUrl}','_blank','noopener,noreferrer')"
             class="w-full h-12 font-bold text-base rounded-lg flex items-center justify-center gap-2 transition-colors ${btnCls}">
             ${esc(t.buyNow)}
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
@@ -485,9 +835,14 @@ function renderResults(results, { make, model, year, partName }) {
   showPage('page-results');
 }
 
-// ── INIT ────────────────────────────────────────────────────────────────────
+// ═══════════════════════ INIT ═══════════════════════════════════════════════
 applyLang();
 showPage('page-home');
+
+// Show API key modal on first ever visit
+if(!localStorage.getItem('bp_groq_key')){
+  setTimeout(openModal, 400);
+}
 </script>
 </body>
 </html>
