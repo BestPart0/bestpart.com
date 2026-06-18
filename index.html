@@ -252,21 +252,37 @@ function showPage(id) {
   if (id === 'page-loading' || id === 'page-error') el.classList.add('flex');
   window.scrollTo(0, 0);
 }
-
-// ── API KEY ─────────────────────────────────────────────────────────────────
-function getApiKey() {
-  let key = localStorage.getItem('bp_groq_key');
-  if (!key) {
-    key = prompt('Paste your free Groq API key below.\n\nGet one free at: console.groq.com/keys');
-    if (key && key.trim()) {
-      localStorage.setItem('bp_groq_key', key.trim());
-    } else {
-      return null;
-    }
+// ── MOCK SEARCH RESULTS ─────────────────────────────────────────────────────
+const mockResults = [
+  {
+    id: "1",
+    name: `${partName} - ${make} ${model}`,
+    price: 1200,
+    type: "Aftermarket",
+    seller: "Jumia Egypt",
+    url: "#",
+    condition: "New",
+    brand: "Bosch",
+    partNumber: "BP-101",
+    rating: 4.5,
+    shippingNote: "Delivery in Cairo 2-3 days"
+  },
+  {
+    id: "2",
+    name: `OEM ${partName} - ${make} ${model}`,
+    price: 2800,
+    type: "OEM",
+    seller: "Amazon Egypt",
+    url: "#",
+    condition: "New",
+    brand: "Toyota",
+    partNumber: "OEM-202",
+    rating: 4.8,
+    shippingNote: "Free delivery Cairo"
   }
-  return key.trim();
-}
+];
 
+renderResults(mockResults, { make, model, year, partName });
 // ── SEARCH ──────────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are a car parts price comparison assistant for the Egyptian automotive market.
 Generate realistic car parts listings for Egypt priced in EGP (Egyptian Pound). 1 USD ≈ 48-50 EGP.
@@ -297,8 +313,6 @@ async function retrySearch() {
 
 async function runSearch({ make, model, year, partName }) {
   const t = T[lang];
-  const key = getApiKey();
-  if (!key) return;
 
   showPage('page-loading');
   document.getElementById('loading-msg').textContent = t.loadingMsg;
